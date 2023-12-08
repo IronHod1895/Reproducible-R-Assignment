@@ -1,0 +1,228 @@
+---
+title: "ReproducibleResearching"
+author: "C'est Moi, Evidemment"
+date: "04/12/2023"
+output:
+  pdf_document: default
+  html_document: default
+  word_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+options(repos = list(CRAN="http://cran.rstudio.com/"))
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r cars}
+summary(cars)
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+
+QUESTION 01: Data Visualisation for Science Communication
+a) Provide your figure here:
+```{r Data Visualisation for Science Communication}
+
+## loading packages
+library(tinytex)
+install.packages(c("ggplot2", "palmerpenguins", "janitor", "dplyr", repos = "http://cran.us.r-project.org"))
+install.packages("knitr")
+install.packages("latexpdf")
+install.packages("car")
+library(car)
+library(latexpdf)
+library(knitr)
+library(ggplot2)
+library(palmerpenguins)
+library(janitor)
+library(dplyr)
+
+## checking the penguin data loaded
+head(penguins_raw)
+write.csv(penguins_raw, "data/penguins_raw.csv")
+names(penguins_raw)
+
+## my functions that will be used
+clean_column_names <- function(penguins_data) {
+  penguins_data %>%
+    clean_names()
+}
+
+shorten_species <- function(penguins_data) {
+  penguins_data %>%
+    mutate(species = case_when(
+      species == "Adelie Penguin (Pygoscelis adeliae)" ~ "Adelie",
+      species == "Chinstrap penguin (Pygoscelis antarctica)" ~ "Chinstrap",
+      species == "Gentoo penguin (Pygoscelis papua)" ~ "Gentoo"
+    ))
+}
+
+remove_empty_columns_rows <- function(penguins_data) {
+  penguins_data %>%
+    remove_empty(c("rows", "cols"))
+}
+
+subset_columns <- function(penguins_data, column_names) {
+  penguins_data %>%
+    select(all_of(column_names))
+}
+
+filter_by_species <- function(penguins_data, selected_species) {
+  penguins_data %>%
+    filter(species == selected_species)
+}
+
+remove_NA <- function(penguins_data) {
+  penguins_data %>%
+    na.omit()
+}
+
+
+
+## cleaning the penguin data
+penguins_clean <- penguins_raw %>%
+    clean_column_names() %>%
+    shorten_species() %>%
+    remove_empty_columns_rows
+
+write.csv(penguins_clean, "Data/penguins_clean.csv")
+names(penguins_clean)
+#View(penguins_clean)
+
+## creating my graph
+bad_culmen_scatter <- ggplot(data = penguins_clean, 
+                          aes(x = culmen_length_mm, 
+                              y = culmen_depth_mm)) +
+  geom_point(color = "blue", alpha = 0.5, show.legend = FALSE) +
+  geom_smooth(method = "lm", se = FALSE) +
+  xlab("c_length") + 
+  ylab("c_depth") +
+  scale_x_continuous(limits = c(0, 200), breaks = seq(0, 200, by = 100)) +
+  scale_y_continuous(limits = c(10, 25), breaks = seq(10, 25, by = 7)) +
+  theme_minimal()  # You can customize the theme if needed
+
+bad_culmen_scatter
+```
+b) Write about how your bad design choices misled the reader about the underlying data.
+  Firstly and perhaps most importantly, I have chosen to ignore the fact that the data is actually comprised of three species – instead representing all the datapoints the same colour and without a legend so that they appear to be the same. This obscures the truth that the data actually contains three separate positive correlations and suggests that it is in fact one negative correlation between the variables – a misconception which I have developed through the addition of a linear regression line which supports this. Additionally, I have made the points the same colour as the line, hiding it slightly, and changed their opacity, making them harder to see and distinguish. Further, I have truncated the x and y axis as Dreissen et al. (2022) show that truncated axis can skew an observers interpretations about the data they are presented with. This has led to the data appearing to be more tightly clustered on the x axis and further spread on the y than they would if represented truly, obscuring the true correlation. I have also used large gaps between the gridlines so it is harder to tell where in them the points are actually representing and made the y axis gridlines a multiple of 7, which further complicates reading the data. Finally, I have also changed the axis labels, removing the (mm) so that it is unclear what is actually being measured, furthering this by abbreviating the labels to “c_length” and “c_depth” so that it is unclear what part of the penguin is actually being measured – the culmen. Overall, the graph is hard to read, and even when read correctly misrepresents the true dataset.
+  
+Driessen, J.E., Vos, D.A., Smeets, I. and Albers, C.J., 2022. Misleading graphs in context: Less misleading than expected. PloS one, 17(6), p.e0265823.
+
+##QUESTION 2: Data Pipeline
+
+###Introduction:
+
+Loading the data:
+Before I begin, I must load the data so the first line of my code does so from the ‘palmerpenguis’ package. Then, I save my raw data to a safe csv file so that I, or anybody else, can always refer back to it and it is not lost as I begin to edit it. Finally, I check the names of the columns in the dataset.
+
+Cleaning the data:
+Here, I call a function which I defined earlier to clean the data, removing superfluous columns and renaming the remaining columns to be more code friendly. Additionally, I shorten the species names from, for example, “Adelie Penguin (Pygoscelis adeliae)” to simply “Adelie” and remove any empty columns and rows for ease of data handling.
+
+Creating an exploratory figure:
+I was interested to see if there was a relationship between culmen length and depth, so created a scatterplot using ggplot to see the data. Crucially, unlike in the bad graph earlier, I separated the points based on species, which left me with a scatter graph that appeared to be showing three separate positive correlations, one for each species – each very similar. This, I thought was worth exploring further to see if these correlations were statistically backed, or if they appeared to be so but were not actually correlated.
+  
+```{r Introduction}
+#load the data
+library(palmerpenguins)
+write.csv(penguins_raw, "data/penguins_raw.csv")
+names(penguins_raw)
+
+#clean the data
+penguins_clean <- penguins_raw %>%
+    clean_column_names() %>%
+    shorten_species() %>%
+    remove_empty_columns_rows()
+
+write.csv(penguins_clean, "Data/penguins_clean.csv")
+names(penguins_clean)
+
+#create an exploratory figure
+culmen_scatter <- ggplot(data = penguins_clean, 
+                          aes(x = culmen_length_mm, 
+                              y = culmen_depth_mm)) +
+                          geom_point(aes(color = species), show.legend = TRUE)
+
+culmen_scatter
+
+#save the figure
+ggsave("figures/culmenfigure_vector.svg", culmen_scatter, width = 5.9, height = 5.9)
+```
+###Hypotheses:
+1.	Culmen length and depth are positively correlated in all three species separately
+2.	The correlation is not 1:1 for depth:length across all species
+
+##Stats Method:
+Hypothesis 1:
+	First I grouped all of the data by species, allowing me to do a separate linear regression for each species and thus to determine if each showed a positive correlation. I then completed a linear regression for each species to work out if there was such a correlation, if it was statistically significant and how much of the variance in the data it explains.
+
+Hypothesis 2:
+	To test whether the correlation was 1:1 in nature I fitted a linear mixed effects model to the data. This once again tested for a positive correlation, accounting for variability caused by species, and looked at how this changed as the intercept, culmen depth, increased.
+
+``` {r Statistical Methods}
+# run a statistical test
+Adelie_data <- subset(penguins_clean, species == "Adelie")
+Adelie_data
+Gentoo_data <- subset(penguins_clean, species == "Gentoo")
+Gentoo_data
+Chinstrap_data <- subset(penguins_clean, species == "Chinstrap")
+Chinstrap_data
+
+lm_Adelie <- lm(culmen_length_mm ~ culmen_depth_mm, data = Adelie_data)
+summary(lm_Adelie)
+lm_Gentoo <- lm(culmen_length_mm ~ culmen_depth_mm, data = Gentoo_data)
+summary(lm_Gentoo)
+lm_Chinstrap <- lm(culmen_length_mm ~ culmen_depth_mm, data = Chinstrap_data)
+summary(lm_Chinstrap)
+
+install.packages("lme4")
+library(lme4)
+
+# Fit mixed-effects model
+mixed_model <- lmer(culmen_length_mm ~ culmen_depth_mm + (1 | species), data = penguins_clean)
+
+# Display mixed-effects model summary
+summary(mixed_model)
+```
+
+``` {r Results}
+# create a results figure
+culmen_scatter2 <- ggplot(data = penguins_clean, aes(x = culmen_length_mm, y = culmen_depth_mm)) +
+  geom_point(aes(color = species), show.legend = TRUE) +
+  geom_smooth(aes(group = species, color = species), method = "lm", se = FALSE) +
+  theme_minimal()
+
+culmen_scatter2
+
+# save the figure
+ggsave("figures/culmenfigure2_vector.svg", culmen_scatter2, width = 5.9, height = 5.9)
+```
+
+##Results:
+Hypothesis 1:
+	The linear regression on the Adelie data shows that there is a statistically significant positive correlation between culmen length and depth (p-value: 6.674e-07); however, looking at the adjusted R-squared you can see that this only explains around 15% of the variability in the data (Adjusted R-squared:  0.1476).
+Looking at the Gentoo data, there is once again a statistically significant interaction, this time with p-value: 1.016e-15. With Adjusted R-squared:  0.4091, this suggests that the interaction explains around 41% of the data, much more than for the Adelie penguins.
+Finally, Chinstrap penguins show statistically significant correlation again, this time with p-value: 1.526e-09 and Adjusted R-squared:  0.4184 suggests that around 42% of the data is explained by this, in line with Gentoo data, once again much more than for Adelie.
+
+Hypothesis 2:
+	From the adjusted R squared values, it is clear that there is a difference in the amount of the data explained by each linear regression; however, each does still show a statistically significant positive linear correlation. This is backed up by the linear mixed effects model which shows that there is a significant positive relationship between culmen depth and length while accounting for random variability between different species. It also shows that species accounts for most of the variance in the data, further confirming the idea that each species has its own very distinct correlation. Finally, the model shows that as culmen depth increases, its effect on culmen length decreases, suggesting that they do not scale at a 1:1 ratio – but instead a 1:1.3383 ratio with length scaling faster than depth.
+	
+Discussion:
+Firstly, it is clear that each species has a very different bill morphology with much of the variance in the data being explained by these differences in species (Variance = 48.322). This may be due to differences in ecological niche and the subsequent optimal beak morphology for foraging in each. The relationship between culmen length and depth explained more variation in both Chinstrap and Gentoo penguins than in Adelie penguins, which may be related to differences in habitat, with Adelies being found primarily on the Antarctic continent whilst Gentoos and Chinstraps are both found on sub-Antarctic islands as well as the north of the continent. Potentially, if beak morphology impacts likelihood of catching prey, then this will be more important in Chinstraps and Gentoos as they will be hunting in likely more fruitful waters; whereas, Adelies may struggle more to find food, being based more so on the continent, and thereby many other factors more associated with their ability to hunt for prey will be more important in determining morphology. The positive correlation between culmen length and depth makes sense biologically, as one would expect larger penguins to have larger bills overall, with increased size across both areas. This study does not correlate this data with penguin size but future studies could explore this area. The proportionally bigger increase in length than depth may be due to longer beaks providing more of an adaptive advantage than deeper beaks, and therefore penguins putting more resources into increasing length. This could be due to longer beaks increasing the range at which a penguin is able to catch prey. However, much of the variance in the data is still not explained by the models and this should be looked into, potentially exploring the relationship between bill morphology and prey type, diving behaviour or other species specific foraging habits. Understanding how bill morphology relates to foraging behaviour may help future efforts to conserve these species under climate change, with these Antarctic residents likely to be disproportionately impacted over the coming years. 
+
+Conclusion:
+Overall, it is clear that culmen length and depth are correlated and vary across species. Future studies should explore how bill morphology relates to factors such as prey preference, prey abundance, foraging strategies and climatic effects such as ocean temperature to help inform future conservation strategies for these penguins.
+
